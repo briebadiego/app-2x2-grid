@@ -19,8 +19,9 @@ try:
     sc.ensure_setup()
 except KeyError:
     st.error(
-        "Faltan las credenciales de Google en `st.secrets['gcp_service_account']`. "
-        "Configúralas en `.streamlit/secrets.toml` (local) o en los Secrets de Streamlit Cloud."
+        "Faltan las credenciales de Google en `st.secrets['gcp_oauth']`. "
+        "Configúralas en `.streamlit/secrets.toml` (local) o en los Secrets de Streamlit Cloud. "
+        "Ver README.md, sección 1."
     )
     st.stop()
 except Exception as e:

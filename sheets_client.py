@@ -3,10 +3,11 @@
 import gspread
 import pandas as pd
 import streamlit as st
-from google.oauth2.service_account import Credentials
+from google.oauth2.credentials import Credentials
 
 SHEET_ID = "1Ms-QKhhr_V8IPe8iHesxU4QWGMQIfVtKoCwNoRvAcRM"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+TOKEN_URI = "https://oauth2.googleapis.com/token"
 
 ACTORES_HEADER = ["nombre"]
 RESPUESTAS_HEADER = ["timestamp", "participante", "actor", "influencia", "interes"]
@@ -27,8 +28,15 @@ DEFAULT_CONFIG = {
 
 @st.cache_resource
 def _get_client():
-    info = dict(st.secrets["gcp_service_account"])
-    creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+    info = st.secrets["gcp_oauth"]
+    creds = Credentials(
+        token=None,
+        refresh_token=info["refresh_token"],
+        client_id=info["client_id"],
+        client_secret=info["client_secret"],
+        token_uri=TOKEN_URI,
+        scopes=SCOPES,
+    )
     return gspread.authorize(creds)
 
 
