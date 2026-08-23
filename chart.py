@@ -1,10 +1,14 @@
 """Construcción del mapa de actores (influencia x interés)."""
 
+import logging
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from adjustText import adjust_text
+
+logging.getLogger("adjustText").setLevel(logging.ERROR)
 
 BG = "#FAFAF9"
 GRID = "#E5E1DA"
@@ -58,31 +62,39 @@ def build_figure(df_avg, config, titulo="Mapa de actores"):
 
     label_box = dict(boxstyle="round,pad=0.35", facecolor="white", edgecolor="none", alpha=0.75)
     pad = (escala_max - escala_min) * 0.035
-    ax.text((punto_medio + escala_max) / 2, escala_max - pad, config["label_alta_alta"],
-            ha="center", va="top", fontsize=11, fontweight="bold", color=q["alta_alta"]["accent"],
-            bbox=label_box, zorder=2)
-    ax.text((punto_medio + escala_max) / 2, escala_min + pad, config["label_alta_baja"],
-            ha="center", va="bottom", fontsize=11, fontweight="bold", color=q["alta_baja"]["accent"],
-            bbox=label_box, zorder=2)
-    ax.text((escala_min + punto_medio) / 2, escala_max - pad, config["label_baja_alta"],
-            ha="center", va="top", fontsize=11, fontweight="bold", color=q["baja_alta"]["accent"],
-            bbox=label_box, zorder=2)
-    ax.text((escala_min + punto_medio) / 2, escala_min + pad, config["label_baja_baja"],
-            ha="center", va="bottom", fontsize=11, fontweight="bold", color=q["baja_baja"]["accent"],
-            bbox=label_box, zorder=2)
+    textos_cuadrante = [
+        ax.text((punto_medio + escala_max) / 2, escala_max - pad, config["label_alta_alta"],
+                ha="center", va="top", fontsize=11, fontweight="bold", color=q["alta_alta"]["accent"],
+                bbox=label_box, zorder=2),
+        ax.text((punto_medio + escala_max) / 2, escala_min + pad, config["label_alta_baja"],
+                ha="center", va="bottom", fontsize=11, fontweight="bold", color=q["alta_baja"]["accent"],
+                bbox=label_box, zorder=2),
+        ax.text((escala_min + punto_medio) / 2, escala_max - pad, config["label_baja_alta"],
+                ha="center", va="top", fontsize=11, fontweight="bold", color=q["baja_alta"]["accent"],
+                bbox=label_box, zorder=2),
+        ax.text((escala_min + punto_medio) / 2, escala_min + pad, config["label_baja_baja"],
+                ha="center", va="bottom", fontsize=11, fontweight="bold", color=q["baja_baja"]["accent"],
+                bbox=label_box, zorder=2),
+    ]
 
     if not df_avg.empty:
         colores = [_accent_for(r["influencia"], r["interes"], punto_medio) for _, r in df_avg.iterrows()]
         ax.scatter(df_avg["influencia"], df_avg["interes"], color=colores, s=140,
                    edgecolors="white", linewidths=1.5, zorder=3)
-        for _, row in df_avg.iterrows():
-            ax.annotate(
-                row["actor"], (row["influencia"], row["interes"]),
-                textcoords="offset points", xytext=(8, 8), fontsize=9.5, color="#2B2B2B",
+        textos = [
+            ax.text(
+                row["influencia"], row["interes"], row["actor"],
+                fontsize=9.5, color="#2B2B2B", zorder=4,
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="#DDDAD3",
                           linewidth=0.6, alpha=0.9),
-                zorder=4,
             )
+            for _, row in df_avg.iterrows()
+        ]
+        adjust_text(
+            textos, ax=ax, objects=textos_cuadrante,
+            arrowprops=dict(arrowstyle="-", color="#B7B2A8", lw=0.7),
+            expand=(1.3, 1.6),
+        )
 
     ax.set_xlabel(config["eje_x_label"], fontsize=12, color="#3A3A3A")
     ax.set_ylabel(config["eje_y_label"], fontsize=12, color="#3A3A3A")
