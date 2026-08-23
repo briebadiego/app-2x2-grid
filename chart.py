@@ -1,9 +1,10 @@
-"""Construcción del mapa de actores (influencia x interés) en matplotlib."""
+"""Construcción del mapa de actores (influencia x interés)."""
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 BG = "#FAFAF9"
 GRID = "#E5E1DA"
@@ -88,4 +89,60 @@ def build_figure(df_avg, config, titulo="Mapa de actores"):
     ax.set_title(titulo, fontsize=15, fontweight="bold", color="#232323", pad=14)
     ax.tick_params(colors=AXIS)
     fig.tight_layout()
+    return fig
+
+
+def build_interactive_figure(df_avg, config, titulo="Mapa de actores"):
+    """Versión interactiva (Plotly): el nombre del actor aparece al pasar el cursor o tocar el punto."""
+    escala_min = float(config["escala_min"])
+    escala_max = float(config["escala_max"])
+    punto_medio = float(config["punto_medio"])
+    q = QUADRANTES
+
+    fig = go.Figure()
+
+    for (x0, x1, y0, y1, color) in [
+        (punto_medio, escala_max, punto_medio, escala_max, q["alta_alta"]["bg"]),
+        (punto_medio, escala_max, escala_min, punto_medio, q["alta_baja"]["bg"]),
+        (escala_min, punto_medio, punto_medio, escala_max, q["baja_alta"]["bg"]),
+        (escala_min, punto_medio, escala_min, punto_medio, q["baja_baja"]["bg"]),
+    ]:
+        fig.add_shape(type="rect", x0=x0, x1=x1, y0=y0, y1=y1, fillcolor=color, line_width=0, layer="below")
+
+    fig.add_shape(type="line", x0=punto_medio, x1=punto_medio, y0=escala_min, y1=escala_max,
+                  line=dict(color=AXIS, width=1.2, dash="dash"))
+    fig.add_shape(type="line", x0=escala_min, x1=escala_max, y0=punto_medio, y1=punto_medio,
+                  line=dict(color=AXIS, width=1.2, dash="dash"))
+
+    pad = (escala_max - escala_min) * 0.035
+
+    def _label(x, y, text, yanchor, color):
+        fig.add_annotation(x=x, y=y, text=text, yanchor=yanchor, showarrow=False,
+                            font=dict(size=13, color=color), bgcolor="rgba(255,255,255,0.75)", borderpad=4)
+
+    _label((punto_medio + escala_max) / 2, escala_max - pad, config["label_alta_alta"], "top", q["alta_alta"]["accent"])
+    _label((punto_medio + escala_max) / 2, escala_min + pad, config["label_alta_baja"], "bottom", q["alta_baja"]["accent"])
+    _label((escala_min + punto_medio) / 2, escala_max - pad, config["label_baja_alta"], "top", q["baja_alta"]["accent"])
+    _label((escala_min + punto_medio) / 2, escala_min + pad, config["label_baja_baja"], "bottom", q["baja_baja"]["accent"])
+
+    if not df_avg.empty:
+        colores = [_accent_for(r["influencia"], r["interes"], punto_medio) for _, r in df_avg.iterrows()]
+        fig.add_trace(go.Scatter(
+            x=df_avg["influencia"], y=df_avg["interes"], mode="markers",
+            marker=dict(size=16, color=colores, line=dict(width=1.5, color="white")),
+            text=df_avg["actor"],
+            hovertemplate="<b>%{text}</b><br>" + config["eje_x_label"] + ": %{x}<br>" + config["eje_y_label"] + ": %{y}<extra></extra>",
+        ))
+
+    fig.update_xaxes(range=[escala_min, escala_max], title=config["eje_x_label"], gridcolor=GRID, griddash="dot",
+                      zeroline=False, showline=True, linecolor=AXIS)
+    fig.update_yaxes(range=[escala_min, escala_max], title=config["eje_y_label"], gridcolor=GRID, griddash="dot",
+                      zeroline=False, showline=True, linecolor=AXIS)
+    fig.update_layout(
+        title=dict(text=titulo, font=dict(size=18, color="#232323")),
+        plot_bgcolor=BG, paper_bgcolor=BG,
+        width=700, height=700,
+        margin=dict(t=60, l=60, r=30, b=60),
+        showlegend=False,
+    )
     return fig

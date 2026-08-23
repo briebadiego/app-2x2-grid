@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 import db_client as sc
-from chart import build_figure
+from chart import build_figure, build_interactive_figure
 
 st.set_page_config(page_title="Mapeo de actores", layout="centered")
 
@@ -159,7 +159,8 @@ de cuadrante. Aplica por igual a todos los sets.
 respuestas" borra TODAS las respuestas de TODOS los sets — úsalo con cuidado.
 
 **4. Gráfico** — elige el set que quieres visualizar y genera el mapa de cuadrantes con el promedio
-de las respuestas de ese set. Se puede descargar en PDF.
+de las respuestas de ese set. Pasa el cursor (o toca en el celular) sobre un punto para ver el
+nombre del actor. También se puede descargar en PDF.
 
 **5. Datos** — descarga en Excel (.xlsx) todas las respuestas (con su set) y todos los actores
 (con su set).
@@ -317,11 +318,15 @@ def render_grafico_tab():
 
     cfg = sc.read_config()
     df_avg = df_set.groupby("actor", as_index=False)[["influencia", "interes"]].mean()
-    fig = build_figure(df_avg, cfg, titulo=f"Mapa de actores — {set_sel}")
-    st.pyplot(fig)
+    titulo = f"Mapa de actores — {set_sel}"
 
+    st.caption("Pasa el cursor (o toca en el celular) sobre un punto para ver el nombre del actor.")
+    fig_interactivo = build_interactive_figure(df_avg, cfg, titulo=titulo)
+    st.plotly_chart(fig_interactivo, width="stretch")
+
+    fig_pdf = build_figure(df_avg, cfg, titulo=titulo)
     buf = io.BytesIO()
-    fig.savefig(buf, format="pdf", bbox_inches="tight")
+    fig_pdf.savefig(buf, format="pdf", bbox_inches="tight")
     st.download_button(
         "Descargar PDF del gráfico", buf.getvalue(),
         file_name=f"mapa_actores_{set_sel}.pdf", mime="application/pdf",
