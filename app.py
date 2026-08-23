@@ -215,18 +215,32 @@ def render_grafico_tab():
     )
 
 
+def _to_xlsx(df, sheet_name):
+    df = df.copy()
+    for col in df.select_dtypes(include=["datetimetz"]).columns:
+        df[col] = df[col].dt.tz_localize(None)
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+    return buf.getvalue()
+
+
 def render_datos_tab():
     st.subheader("Descargar datos")
     df = sc.read_respuestas()
     st.download_button(
-        "Descargar respuestas (CSV)", df.to_csv(index=False).encode("utf-8"),
-        file_name="respuestas.csv", mime="text/csv", disabled=df.empty,
+        "Descargar respuestas (XLSX)", _to_xlsx(df, "respuestas"),
+        file_name="respuestas.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        disabled=df.empty,
     )
     actores = sc.read_actores()
     df_actores = pd.DataFrame({"actor": actores})
     st.download_button(
-        "Descargar actores (CSV)", df_actores.to_csv(index=False).encode("utf-8"),
-        file_name="actores.csv", mime="text/csv", disabled=df_actores.empty,
+        "Descargar actores (XLSX)", _to_xlsx(df_actores, "actores"),
+        file_name="actores.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        disabled=df_actores.empty,
     )
 
 
