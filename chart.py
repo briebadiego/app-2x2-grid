@@ -29,7 +29,7 @@ def _accent_for(influencia, interes, punto_medio):
     return QUADRANTES["baja_baja"]["accent"]
 
 
-def build_figure(df_avg, config):
+def build_figure(df_avg, config, titulo="Mapa de actores"):
     escala_min = float(config["escala_min"])
     escala_max = float(config["escala_max"])
     punto_medio = float(config["punto_medio"])
@@ -85,7 +85,7 @@ def build_figure(df_avg, config):
 
     ax.set_xlabel(config["eje_x_label"], fontsize=12, color="#3A3A3A")
     ax.set_ylabel(config["eje_y_label"], fontsize=12, color="#3A3A3A")
-    ax.set_title("Mapa de actores", fontsize=15, fontweight="bold", color="#232323", pad=14)
+    ax.set_title(titulo, fontsize=15, fontweight="bold", color="#232323", pad=14)
     ax.tick_params(colors=AXIS)
     fig.tight_layout()
     return fig
