@@ -3,8 +3,8 @@
 App de Streamlit para que un equipo puntúe actores en dos ejes (influencia / interés,
 escala configurable) y obtenga un mapa único de cuadrantes con el promedio de todos.
 
-Los datos viven en este Google Sheets:
-https://docs.google.com/spreadsheets/d/1Ms-QKhhr_V8IPe8iHesxU4QWGMQIfVtKoCwNoRvAcRM/edit
+Los datos viven en una base de datos Postgres (gratis, en [Supabase](https://supabase.com)),
+que creas tú en el paso 1.
 
 ## Cómo funciona
 
@@ -15,47 +15,35 @@ https://docs.google.com/spreadsheets/d/1Ms-QKhhr_V8IPe8iHesxU4QWGMQIfVtKoCwNoRvA
   recorre los actores uno a uno con dos sliders (influencia / interés), estilo Kahoot.
   Al llegar al último, un botón "Enviar" manda todas sus respuestas de una vez.
 
-La primera vez que la app se conecta al Sheets, crea automáticamente las pestañas
-`actores`, `respuestas` y `config` con sus encabezados y valores por defecto.
+La primera vez que la app se conecta a la base de datos, crea automáticamente las tablas
+`actores`, `respuestas` y `config` con sus valores por defecto.
 
-## 1. Autorizar tu cuenta de Google (una sola vez)
+## 1. Crear la base de datos (una sola vez, ~2 minutos)
 
-Muchas cuentas de Google (incluidas personales) tienen bloqueada la creación de
-claves de cuenta de servicio (`iam.disableServiceAccountKeyCreation`). Por eso la
-app se autentica como **tu propia cuenta** vía OAuth, en vez de una cuenta de
-servicio — de paso, ya no hace falta compartir el Sheets con nadie, porque usa tu
-acceso normal como dueño del documento.
-
-1. Ve a [console.cloud.google.com](https://console.cloud.google.com/) y crea un
-   proyecto (o usa uno existente).
-2. En **APIs y servicios → Biblioteca**, busca y habilita **Google Sheets API**.
-3. En **APIs y servicios → Pantalla de consentimiento de OAuth**: tipo **Externo**,
-   completa nombre de la app y tu correo. Guarda.
-   - Importante: en **Publicar aplicación**, pásala a estado **En producción** (no
-     dejarla en "Prueba"). Si se queda en "Prueba", el permiso caduca a los 7 días
-     y la app deja de poder escribir en el Sheets. No hace falta la verificación de
-     Google para esto — puede quedar "en producción sin verificar" (al autorizar te
-     va a salir un aviso de "app no verificada", das clic en Avanzado → Ir a la app).
-4. En **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de
-   OAuth**, tipo de aplicación **Aplicación de escritorio**. Descarga el JSON
-   (`client_secret_....json`).
-5. En tu compu, con Python instalado:
-   ```bash
-   pip install google-auth-oauthlib
-   python get_refresh_token.py ruta/al/client_secret_....json
+1. Ve a [supabase.com](https://supabase.com) y crea una cuenta gratis (el botón de
+   "Continue with GitHub" es el más rápido — no pide tarjeta).
+2. **New project**: elige un nombre, define una contraseña de base de datos (guárdala,
+   la necesitas en el paso siguiente) y una región cercana. Plan **Free**. Crear.
+3. Espera a que el proyecto termine de aprovisionarse (~1-2 min).
+4. Ve a **Project Settings → Database → Connection string**, pestaña **URI**, y copia
+   el string de tipo **Session pooler** (puerto `6543`). Se ve así:
    ```
-   Se abre el navegador: inicia sesión con la cuenta de Google que es dueña del
-   Sheets y acepta el permiso. La terminal imprime un bloque `[gcp_oauth]` con
-   `client_id`, `client_secret` y `refresh_token`.
+   postgresql://postgres.xxxxxxxx:[YOUR-PASSWORD]@aws-0-xxxxxxxx.pooler.supabase.com:6543/postgres
+   ```
+5. Reemplaza `[YOUR-PASSWORD]` por la contraseña que definiste en el paso 2.
 
-## 2. Configurar las credenciales en la app
+Eso es todo — sin consola de Google, sin OAuth, sin cuentas de servicio.
 
-Ese bloque `[gcp_oauth]` no se sube al repo. Se coloca como "secret":
+## 2. Configurar la credencial en la app
+
+Ese string de conexión no se sube al repo. Se coloca como "secret":
 
 - **Local**: copia `.streamlit/secrets.toml.example` a `.streamlit/secrets.toml` y
-  pega ahí los tres valores que imprimió el script.
-- **Streamlit Cloud**: en el panel de la app → **Settings → Secrets**, pega el mismo
-  bloque (formato TOML).
+  pega ahí tu `database_url`.
+- **Streamlit Cloud**: en el panel de la app → **Settings → Secrets**, pega una línea:
+  ```toml
+  database_url = "postgresql://postgres.xxxxxxxx:tu-password@aws-0-xxxxxxxx.pooler.supabase.com:6543/postgres"
+  ```
 
 ## 3. Correr localmente
 
@@ -73,13 +61,13 @@ Abre `http://localhost:8501` para la vista monitor, y
 2. Entra a [share.streamlit.io](https://share.streamlit.io/), conecta tu cuenta de
    GitHub y selecciona el repo `briebadiego/app-2x2-grid`, rama `main`, archivo
    `app.py`.
-3. Antes de desplegar (o justo después, en **Settings → Secrets**), pega las
-   credenciales del paso 2.
+3. Antes de desplegar (o justo después, en **Settings → Secrets**), pega el
+   `database_url` del paso 2.
 4. Deploy. La URL pública que te da Streamlit es la que compartes:
    - tal cual, para el monitor.
    - con `?vista=participante` al final, para los participantes (por QR o link directo).
 
-## Estructura del Sheets
+## Estructura de la base de datos
 
 - **`actores`**: una columna, `nombre`. La administra el monitor.
 - **`respuestas`**: una fila por cada calificación individual — `timestamp`,
@@ -92,7 +80,5 @@ Abre `http://localhost:8501` para la vista monitor, y
 ## Archivos
 
 - `app.py` — routing entre vistas + UI de ambas.
-- `sheets_client.py` — toda la lectura/escritura al Google Sheets.
+- `db_client.py` — toda la lectura/escritura a la base Postgres.
 - `chart.py` — construcción del mapa de cuadrantes en matplotlib.
-- `get_refresh_token.py` — script de setup, se corre una sola vez en tu compu (ver
-  sección 1), no se despliega ni se usa en producción.

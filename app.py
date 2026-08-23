@@ -10,7 +10,7 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-import sheets_client as sc
+import db_client as sc
 from chart import build_figure
 
 st.set_page_config(page_title="Mapeo de actores", layout="centered")
@@ -19,13 +19,13 @@ try:
     sc.ensure_setup()
 except KeyError:
     st.error(
-        "Faltan las credenciales de Google en `st.secrets['gcp_oauth']`. "
-        "Configúralas en `.streamlit/secrets.toml` (local) o en los Secrets de Streamlit Cloud. "
+        "Falta `database_url` en `st.secrets`. "
+        "Configúralo en `.streamlit/secrets.toml` (local) o en los Secrets de Streamlit Cloud. "
         "Ver README.md, sección 1."
     )
     st.stop()
 except Exception as e:
-    st.error(f"No se pudo conectar con Google Sheets: {e}")
+    st.error(f"No se pudo conectar con la base de datos: {e}")
     st.stop()
 
 
